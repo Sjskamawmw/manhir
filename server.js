@@ -4,7 +4,10 @@ import express from "express";
 
 const app = express();
 const port = process.env.PORT || 3000;
-const frontendOrigin = process.env.FRONTEND_ORIGIN || "*";
+const frontendOrigins = (process.env.FRONTEND_ORIGIN || "*")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 const aiServerUrl =
   process.env.HUGGINGFACE_SPACE_URL ||
   process.env.LLAMA_SERVER_URL ||
@@ -13,7 +16,13 @@ const llamaModel = process.env.LLAMA_MODEL || "manhir";
 
 app.use(
   cors({
-    origin: frontendOrigin === "*" ? true : frontendOrigin,
+    origin(origin, callback) {
+      if (frontendOrigins.includes("*") || !origin || frontendOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Origem nao permitida pelo CORS: ${origin}`));
+    },
   }),
 );
 app.use(express.json({ limit: "1mb" }));
@@ -46,7 +55,7 @@ app.post("/chat", async (request, response) => {
     {
       role: "system",
       content:
-        "Voce e o Manhir, um assistente de IA util, direto e amigavel. Responda em portugues do Brasil quando o usuario falar portugues.",
+        "Voce e o Manhir, um assistente especialista em desenvolvimento web frontend. Seu foco principal e JavaScript, HTML e CSS. Ajude o usuario a criar, corrigir, explicar e melhorar codigo frontend. Responda em portugues do Brasil quando o usuario falar portugues. Seja direto, pratico e mostre exemplos de codigo quando isso ajudar. Quando o usuario mandar um erro, explique a causa provavel e de passos claros para corrigir. Se o usuario pedir algo fora de frontend, ainda ajude, mas mantenha prioridade em solucoes simples e bem explicadas.",
     },
     ...normalizeMessages(messages),
   ];
